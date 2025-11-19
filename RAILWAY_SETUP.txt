@@ -1,0 +1,48 @@
+# 🚂 RAILWAY DEPLOYMENT - COPY & PASTE METHOD
+
+## Step 1: In Railway, click "+ Create" → "Empty Service"
+
+## Step 2: Add these 3 files to Railway:
+
+### File 1: railway_app.py
+(Copy the entire railway_app.py file content)
+
+### File 2: requirements.txt
+flask==3.0.0
+supabase==2.3.4
+gunicorn==21.2.0
+
+### File 3: Procfile
+web: gunicorn railway_app:app --bind 0.0.0.0:$PORT
+
+## Step 3: Set Environment Variables in Railway
+
+Click "Variables" tab and add:
+
+SUPABASE_URL=https://cfeiyignthbejpwaruzk.supabase.co
+
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmZWl5aWdudGhiZWpwd2FydXprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NDEzNzUsImV4cCI6MjA3OTExNzM3NX0.4XcbLtfSly_vsFbL_cO-5XcEIdwEqm_GbyLTD9vc0rE
+
+WHATSAPP_PHONE_ID=927300593790248
+
+WEBHOOK_VERIFY_TOKEN=ComGaOi2024SecureToken
+
+## Step 4: Deploy!
+
+Railway will auto-deploy and give you a URL like:
+https://your-app.railway.app
+
+## Step 5: Configure WhatsApp Webhook
+
+1. Go to Meta Developer Console
+2. WhatsApp → Configuration → Webhook
+3. Callback URL: https://your-railway-url.railway.app/webhook/whatsapp
+4. Verify Token: ComGaOi2024SecureToken
+5. Subscribe to "messages"
+
+## Test Your Agent:
+
+Message: +84 96 501 00 52
+Try: "Hi", "menu", "dat mon"
+
+Done! 🎉

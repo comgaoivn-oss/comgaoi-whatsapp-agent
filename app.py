@@ -13,17 +13,34 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 WHATSAPP_PHONE_ID = os.getenv("WHATSAPP_PHONE_ID", "927300593790248")
 WEBHOOK_VERIFY_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN", "ComGaOi2024SecureToken")
 
-# Initialize Supabase
+# Initialize Supabase with DEBUG
 supabase = None
+print("=" * 50)
+print(f"[DEBUG] SUPABASE_URL: {SUPABASE_URL}")
+print(f"[DEBUG] SUPABASE_KEY exists: {bool(SUPABASE_KEY)}")
+print(f"[DEBUG] SUPABASE_KEY length: {len(SUPABASE_KEY) if SUPABASE_KEY else 0}")
+print(f"[DEBUG] SUPABASE_KEY first 20 chars: {SUPABASE_KEY[:20] if SUPABASE_KEY else 'EMPTY'}")
+print("=" * 50)
+
 try:
     from supabase import create_client
     if SUPABASE_KEY:
+        print(f"[DEBUG] Attempting to connect to Supabase...")
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        print("✅ Supabase connected!")
+        print("✅ Supabase connected successfully!")
+        
+        # Test query
+        try:
+            test = supabase.table('menu_items').select('id').limit(1).execute()
+            print(f"✅ Test query successful! Found {len(test.data)} items")
+        except Exception as test_err:
+            print(f"⚠️ Test query failed: {test_err}")
     else:
-        print("⚠️ SUPABASE_KEY not found in environment variables!")
+        print("❌ SUPABASE_KEY is EMPTY - check Railway environment variables!")
 except Exception as e:
-    print(f"❌ Supabase error: {e}")
+    print(f"❌ Supabase connection error: {e}")
+    import traceback
+    traceback.print_exc()
 
 # Sales Agent Logic
 PLATFORMS = {
@@ -34,14 +51,17 @@ PLATFORMS = {
 
 def detect_intent(message):
     msg = message.lower()
-    if any(w in msg for w in ['menu', 'mon', 'co mon', 'an gi']): return 'menu_inquiry'
-    if any(w in msg for w in ['gia', 'bao nhieu', 'price']): return 'price_check'
-    if any(w in msg for w in ['dat', 'order', 'mua', 'giao']): return 'order_intent'
-    if any(w in msg for w in ['gio', 'mo cua', 'hours']): return 'hours_inquiry'
-    if any(w in msg for w in ['dia chi', 'address', 'o dau']): return 'location_inquiry'
+    if any(w in msg for w in ['menu', 'mon', 'co mon', 'an gi', 'món', 'ăn gì']): return 'menu_inquiry'
+    if any(w in msg for w in ['gia', 'bao nhieu', 'price', 'giá', 'bao nhiêu']): return 'price_check'
+    if any(w in msg for w in ['dat', 'order', 'mua', 'giao', 'đặt']): return 'order_intent'
+    if any(w in msg for w in ['gio', 'mo cua', 'hours', 'giờ', 'mở cửa']): return 'hours_inquiry'
+    if any(w in msg for w in ['dia chi', 'address', 'o dau', 'địa chỉ', 'ở đâu']): return 'location_inquiry'
     return 'general'
 
 def get_menu_response():
+    if not supabase:
+        return "⚠️ Hệ thống đang bảo trì. Vui lòng thử lại sau!"
+    
     try:
         result = supabase.table('menu_items').select('*').eq('available', True).execute()
         items = result.data if result.data else []
@@ -103,7 +123,7 @@ def process_message(phone, message):
 
     intent = detect_intent(message)
 
-    if any(g in message.lower() for g in ['hi', 'hello', 'chao', 'chào']):
+    if any(g in message.lower() for g in ['hi', 'hello', 'chao', 'chào', 'xin chào']):
         response = handle_greeting()
     elif intent == 'menu_inquiry':
         response = get_menu_response()

@@ -20,6 +20,7 @@ print(f"[DEBUG] SUPABASE_URL: {SUPABASE_URL}")
 print(f"[DEBUG] SUPABASE_KEY exists: {bool(SUPABASE_KEY)}")
 print(f"[DEBUG] SUPABASE_KEY length: {len(SUPABASE_KEY) if SUPABASE_KEY else 0}")
 print(f"[DEBUG] SUPABASE_KEY first 20 chars: {SUPABASE_KEY[:20] if SUPABASE_KEY else 'EMPTY'}")
+print(f"[DEBUG] WEBHOOK_VERIFY_TOKEN: {WEBHOOK_VERIFY_TOKEN}")
 print("=" * 50)
 
 try:
@@ -164,6 +165,8 @@ def home():
 def whatsapp_webhook():
     try:
         data = request.json
+        print(f"[{datetime.utcnow().isoformat()}] 📥 Incoming webhook data: {data}")
+        
         entry = data.get('entry', [{}])[0]
         changes = entry.get('changes', [{}])[0]
         value = changes.get('value', {})
@@ -174,13 +177,20 @@ def whatsapp_webhook():
             text = message.get('text', {}).get('body', '')
 
             if customer_phone and text:
+                print(f"[{datetime.utcnow().isoformat()}] 📨 Message from {customer_phone}: {text}")
                 response = process_message(customer_phone, text)
-                print(f"[{datetime.utcnow().isoformat()}] Response to {customer_phone}: {response[:50]}...")
+                print(f"[{datetime.utcnow().isoformat()}] 📤 Response: {response[:100]}...")
+                
+                # TODO: Send response back via WhatsApp API
+                # You'll need to add WHATSAPP_ACCESS_TOKEN to send messages back
+                
                 return {"status": "success"}, 200
 
         return {"status": "ok"}, 200
     except Exception as e:
-        print(f"[{datetime.utcnow().isoformat()}] Webhook error: {e}")
+        print(f"[{datetime.utcnow().isoformat()}] ❌ Webhook error: {e}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}, 500
 
 @app.route('/webhook/whatsapp', methods=['GET'])
@@ -188,10 +198,21 @@ def verify_webhook():
     mode = request.args.get('hub.mode')
     token = request.args.get('hub.verify_token')
     challenge = request.args.get('hub.challenge')
+    
+    print("=" * 50)
+    print(f"[WEBHOOK VERIFY] Mode: {mode}")
+    print(f"[WEBHOOK VERIFY] Token received: '{token}'")
+    print(f"[WEBHOOK VERIFY] Token expected: '{WEBHOOK_VERIFY_TOKEN}'")
+    print(f"[WEBHOOK VERIFY] Challenge: {challenge}")
+    print(f"[WEBHOOK VERIFY] Match: {token == WEBHOOK_VERIFY_TOKEN}")
+    print(f"[WEBHOOK VERIFY] Token lengths - received: {len(token) if token else 0}, expected: {len(WEBHOOK_VERIFY_TOKEN)}")
+    print("=" * 50)
 
     if mode == 'subscribe' and token == WEBHOOK_VERIFY_TOKEN:
-        print(f"[{datetime.utcnow().isoformat()}] ✅ Webhook verified!")
+        print(f"[{datetime.utcnow().isoformat()}] ✅ Webhook verified successfully!")
         return challenge, 200
+    
+    print(f"[{datetime.utcnow().isoformat()}] ❌ Webhook verification FAILED!")
     return 'Forbidden', 403
 
 @app.route('/health')

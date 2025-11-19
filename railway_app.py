@@ -20,6 +20,8 @@ try:
     if SUPABASE_KEY:
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         print("✅ Supabase connected!")
+    else:
+        print("⚠️ SUPABASE_KEY not found in environment variables!")
 except Exception as e:
     print(f"❌ Supabase error: {e}")
 
@@ -43,14 +45,15 @@ def get_menu_response():
     try:
         result = supabase.table('menu_items').select('*').eq('available', True).execute()
         items = result.data if result.data else []
-    except:
+    except Exception as e:
+        print(f"❌ Menu fetch error: {e}")
         items = []
 
     if not items:
-        return "Menu chua san sang. Vui long thu lai sau!"
+        return "Menu chưa sẵn sàng. Vui lòng thử lại sau!"
 
-    response = "📋 *MENU COM GA OI*\n\n"
-    categories = {'com_ga': '🍗 COM GA', 'com_thit': '🥩 COM THIT', 'do_uong': '🥤 DO UONG', 'side_dish': '🍲 MON PHU'}
+    response = "📋 *MENU CƠM GÀ ƠI*\n\n"
+    categories = {'com_ga': '🍗 CƠM GÀ', 'com_thit': '🥩 CƠM THỊT', 'do_uong': '🥤 ĐỒ UỐNG', 'side_dish': '🍲 MÓN PHỤ'}
 
     grouped = {}
     for item in items:
@@ -61,31 +64,31 @@ def get_menu_response():
     for cat, items_list in grouped.items():
         response += f"\n*{categories.get(cat, cat.upper())}*\n"
         for item in items_list:
-            price = f"{int(item['base_price']):,}d" if item.get('base_price') else "Lien he"
+            price = f"{int(item['base_price']):,}đ" if item.get('base_price') else "Liên hệ"
             response += f"• {item['item_name']} - {price}\n"
 
-    response += "\n📲 *DAT NGAY:*\n"
+    response += "\n📲 *ĐẶT NGAY:*\n"
     for p in PLATFORMS.values():
         response += f"{p['emoji']} {p['name']}: {p['url']}\n"
     return response
 
 def handle_order_intent():
-    response = "🛍️ *DAT MON COM GA OI*\n\nBan co the dat mon qua:\n\n"
+    response = "🛍️ *ĐẶT MÓN CƠM GÀ ƠI*\n\nBạn có thể đặt món qua:\n\n"
     for p in PLATFORMS.values():
         response += f"{p['emoji']} *{p['name']}*\n   {p['url']}\n\n"
-    response += "Giao hang: 30-45 phut"
+    response += "Giao hàng: 30-45 phút"
     return response
 
 def handle_greeting():
-    return '''Xin chao! Chao mung ban den Com Ga Oi! 👋
+    return '''Xin chào! Chào mừng bạn đến Cơm Gà Ơi! 👋
 
-Toi co the giup ban:
+Tôi có thể giúp bạn:
 📋 Xem menu
-💰 Hoi gia mon an
-🛍️ Dat mon
-📍 Thong tin lien he
+💰 Hỏi giá món ăn
+🛍️ Đặt món
+📍 Thông tin liên hệ
 
-Ban muon gi? Cu hoi nhe! 😊'''
+Bạn muốn gì? Cứ hỏi nhé! 😊'''
 
 def process_message(phone, message):
     # Log conversation
@@ -95,20 +98,21 @@ def process_message(phone, message):
                 'customer_phone': phone, 'message_text': message,
                 'message_type': 'incoming', 'created_at': datetime.utcnow().isoformat()
             }).execute()
-        except: pass
+        except Exception as e:
+            print(f"⚠️ Log error: {e}")
 
     intent = detect_intent(message)
 
-    if any(g in message.lower() for g in ['hi', 'hello', 'chao']):
+    if any(g in message.lower() for g in ['hi', 'hello', 'chao', 'chào']):
         response = handle_greeting()
     elif intent == 'menu_inquiry':
         response = get_menu_response()
     elif intent == 'order_intent':
         response = handle_order_intent()
     elif intent == 'hours_inquiry':
-        response = "⏰ *GIO MO CUA*\n\nNha hang mo cua 10:00 - 22:00 hang ngay!"
+        response = "⏰ *GIỜ MỞ CỬA*\n\nNhà hàng mở cửa 10:00 - 22:00 hàng ngày!"
     elif intent == 'location_inquiry':
-        response = "📍 *DIA CHI*\n\nKiem tra tren BeFood, ShopeeFood, Xanh SM!"
+        response = "📍 *ĐỊA CHỈ*\n\nKiểm tra trên BeFood, ShopeeFood, Xanh SM!"
     else:
         response = handle_greeting()
 
@@ -120,7 +124,8 @@ def process_message(phone, message):
                 'message_type': 'outgoing', 'intent': intent,
                 'responded': True, 'created_at': datetime.utcnow().isoformat()
             }).execute()
-        except: pass
+        except Exception as e:
+            print(f"⚠️ Response log error: {e}")
 
     return response
 

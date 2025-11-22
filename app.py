@@ -33,7 +33,7 @@ try:
         print(f"[DEBUG] Attempting to connect to Supabase...")
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         print("✅ Supabase connected successfully!")
-        
+
         # Test query
         try:
             test = supabase.table('menu_items').select('id').limit(1).execute()
@@ -59,7 +59,7 @@ def send_whatsapp_message(to_phone, message_text):
     if not WHATSAPP_ACCESS_TOKEN:
         print("⚠️ WHATSAPP_ACCESS_TOKEN not configured - cannot send message")
         return False
-    
+
     url = f"https://graph.facebook.com/v17.0/{WHATSAPP_PHONE_ID}/messages"
     headers = {
         "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
@@ -71,7 +71,7 @@ def send_whatsapp_message(to_phone, message_text):
         "type": "text",
         "text": {"body": message_text}
     }
-    
+
     try:
         print(f"[{datetime.utcnow().isoformat()}] 📤 Sending WhatsApp message to {to_phone}...")
         response = requests.post(url, json=payload, headers=headers, timeout=10)
@@ -96,7 +96,7 @@ def detect_intent(message):
 def get_menu_response():
     if not supabase:
         return "⚠️ Hệ thống đang bảo trì. Vui lòng thử lại sau!"
-    
+
     try:
         result = supabase.table('menu_items').select('*').eq('available', True).execute()
         items = result.data if result.data else []
@@ -165,7 +165,7 @@ def process_message(phone, message):
     elif intent == 'order_intent':
         response = handle_order_intent()
     elif intent == 'hours_inquiry':
-        response = "⏰ *GIỜ MỞ CỬA*\n\nNhà hàng mở cửa 10:00 - 22:00 hàng ngáy!"
+        response = "⏰ *GIỜ MỞ CỬA*\n\nNhà hàng mở cửa 10:00 - 22:00 hàng ngày!"
     elif intent == 'location_inquiry':
         response = "📍 *ĐỊA CHỈ*\n\nKiểm tra trên BeFood, ShopeeFood, Xanh SM!"
     else:
@@ -201,7 +201,7 @@ def whatsapp_webhook():
     try:
         data = request.json
         print(f"[{datetime.utcnow().isoformat()}] 📥 Incoming webhook data: {data}")
-        
+
         entry = data.get('entry', [{}])[0]
         changes = entry.get('changes', [{}])[0]
         value = changes.get('value', {})
@@ -215,10 +215,10 @@ def whatsapp_webhook():
                 print(f"[{datetime.utcnow().isoformat()}] 📨 Message from {customer_phone}: {text}")
                 response = process_message(customer_phone, text)
                 print(f"[{datetime.utcnow().isoformat()}] 📤 Response: {response[:100]}...")
-                
+
                 # Send response back via WhatsApp
                 send_whatsapp_message(customer_phone, response)
-                
+
                 return {"status": "success"}, 200
 
         return {"status": "ok"}, 200
@@ -233,7 +233,7 @@ def verify_webhook():
     mode = request.args.get('hub.mode')
     token = request.args.get('hub.verify_token')
     challenge = request.args.get('hub.challenge')
-    
+
     print("=" * 50)
     print(f"[WEBHOOK VERIFY] Mode: {mode}")
     print(f"[WEBHOOK VERIFY] Token received: '{token}'")
@@ -246,7 +246,7 @@ def verify_webhook():
     if mode == 'subscribe' and token == WEBHOOK_VERIFY_TOKEN:
         print(f"[{datetime.utcnow().isoformat()}] ✅ Webhook verified successfully!")
         return challenge, 200
-    
+
     print(f"[{datetime.utcnow().isoformat()}] ❌ Webhook verification FAILED!")
     return 'Forbidden', 403
 

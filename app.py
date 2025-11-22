@@ -2,6 +2,7 @@
 # Just copy this entire file to Railway and add environment variables!
 
 import os
+import requests
 from flask import Flask, request
 from datetime import datetime
 
@@ -11,6 +12,7 @@ app = Flask(__name__)
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://cfeiyignthbejpwaruzk.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 WHATSAPP_PHONE_ID = os.getenv("WHATSAPP_PHONE_ID", "927300593790248")
+WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
 WEBHOOK_VERIFY_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN", "ComGaOi2024SecureToken")
 
 # Initialize Supabase with DEBUG
@@ -21,6 +23,8 @@ print(f"[DEBUG] SUPABASE_KEY exists: {bool(SUPABASE_KEY)}")
 print(f"[DEBUG] SUPABASE_KEY length: {len(SUPABASE_KEY) if SUPABASE_KEY else 0}")
 print(f"[DEBUG] SUPABASE_KEY first 20 chars: {SUPABASE_KEY[:20] if SUPABASE_KEY else 'EMPTY'}")
 print(f"[DEBUG] WEBHOOK_VERIFY_TOKEN: {WEBHOOK_VERIFY_TOKEN}")
+print(f"[DEBUG] WHATSAPP_ACCESS_TOKEN exists: {bool(WHATSAPP_ACCESS_TOKEN)}")
+print(f"[DEBUG] WHATSAPP_PHONE_ID: {WHATSAPP_PHONE_ID}")
 print("=" * 50)
 
 try:
@@ -49,6 +53,36 @@ PLATFORMS = {
     'shopeefood': {'name': 'ShopeeFood', 'url': 'https://shopeefood.vn/u/dU8yVzN', 'emoji': '🟠'},
     'xanhsm': {'name': 'Xanh SM', 'url': 'https://xanhsmngon.onelink.me/14WJ/91mmpf5n', 'emoji': '🟢'}
 }
+
+def send_whatsapp_message(to_phone, message_text):
+    """Send a WhatsApp message via Meta's Cloud API"""
+    if not WHATSAPP_ACCESS_TOKEN:
+        print("⚠️ WHATSAPP_ACCESS_TOKEN not configured - cannot send message")
+        return False
+    
+    url = f"https://graph.facebook.com/v17.0/{WHATSAPP_PHONE_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to_phone,
+        "type": "text",
+        "text": {"body": message_text}
+    }
+    
+    try:
+        print(f"[{datetime.utcnow().isoformat()}] 📤 Sending WhatsApp message to {to_phone}...")
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        response.raise_for_status()
+        print(f"[{datetime.utcnow().isoformat()}] ✅ Message sent successfully! Response: {response.json()}")
+        return True
+    except requests.exceptions.RequestException as e:
+        print(f"[{datetime.utcnow().isoformat()}] ❌ Failed to send WhatsApp message: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"[{datetime.utcnow().isoformat()}] Response body: {e.response.text}")
+        return False
 
 def detect_intent(message):
     msg = message.lower()
@@ -131,7 +165,7 @@ def process_message(phone, message):
     elif intent == 'order_intent':
         response = handle_order_intent()
     elif intent == 'hours_inquiry':
-        response = "⏰ *GIỜ MỞ CỬA*\n\nNhà hàng mở cửa 10:00 - 22:00 hàng ngày!"
+        response = "⏰ *GIỜ MỞ CỬA*\n\nNhà hàng mở cửa 10:00 - 22:00 hàng ngáy!"
     elif intent == 'location_inquiry':
         response = "📍 *ĐỊA CHỈ*\n\nKiểm tra trên BeFood, ShopeeFood, Xanh SM!"
     else:
@@ -158,6 +192,7 @@ def home():
         "service": "Com Ga Oi WhatsApp Sales Agent",
         "supabase_connected": supabase is not None,
         "whatsapp_phone_id": WHATSAPP_PHONE_ID,
+        "whatsapp_configured": bool(WHATSAPP_ACCESS_TOKEN),
         "webhook_url": "/webhook/whatsapp"
     }
 
@@ -181,8 +216,8 @@ def whatsapp_webhook():
                 response = process_message(customer_phone, text)
                 print(f"[{datetime.utcnow().isoformat()}] 📤 Response: {response[:100]}...")
                 
-                # TODO: Send response back via WhatsApp API
-                # You'll need to add WHATSAPP_ACCESS_TOKEN to send messages back
+                # Send response back via WhatsApp
+                send_whatsapp_message(customer_phone, response)
                 
                 return {"status": "success"}, 200
 
@@ -220,7 +255,8 @@ def health():
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "supabase": supabase is not None
+        "supabase": supabase is not None,
+        "whatsapp_configured": bool(WHATSAPP_ACCESS_TOKEN)
     }
 
 if __name__ == '__main__':
